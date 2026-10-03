@@ -1,0 +1,776 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style></head><body>
+<title>Oche 501</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-column pub chalkboard; scoreboard first (readable from the oche), turn strip, controls, then board + keypad + camera panels. */
+:root{
+  color-scheme:dark;
+  --slate:#121815; --slate-2:#19221e; --slate-3:#212c27; --line:#2d3a33;
+  --chalk:#eef1ea; --dim:#94a199; --red:#e2493d; --green:#3ea56b; --sisal:#e7d9b6; --bd-dark:#1b1d1c;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'Barlow',system-ui,-apple-system,sans-serif;
+  --r:10px;
+}
+html,body{background:var(--slate);color:var(--chalk)}
+body{font-family:var(--body);font-size:16px;line-height:1.45}
+*{box-sizing:border-box}
+.app{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:10px 40px;display:flex;flex-direction:column;gap:14px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--sisal);outline-offset:2px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:.04em;line-height:1}
+.brand span{color:var(--red);margin-left:4px}
+.tabs{display:flex;gap:4px;background:var(--slate-2);border:1px solid var(--line);border-radius:999px;padding:3px}
+.tabs button{border:0;background:none;padding:7px 14px;border-radius:999px;font-weight:600;font-size:14px;color:var(--dim)}
+.tabs button.on{background:var(--chalk);color:var(--slate)}
+
+/* Scoreboard */
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.pc{background:var(--slate-2);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px 12px;min-width:0;position:relative}
+.pc.on{border-color:var(--chalk);box-shadow:inset 0 -4px 0 var(--red)}
+.pc .nm{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim)}
+.pc.on .nm{color:var(--chalk)}
+.pc .sc{font-family:var(--display);font-weight:800;font-size:clamp(56px,14vw,92px);line-height:.95;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.pc .meta{display:flex;gap:12px;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.pc .meta b{color:var(--chalk);font-weight:600}
+.legpips{position:absolute;top:10px;right:12px;display:flex;gap:4px}
+.legpips i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--dim)}
+.legpips i.w{background:var(--green);border-color:var(--green)}
+
+/* Turn strip */
+.turn{background:var(--slate-2);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.turn-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.turn-head .who{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.03em;text-transform:uppercase}
+.tag{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--slate-3);color:var(--dim)}
+.tag.bust{background:var(--red);color:#fff}
+.tag.win{background:var(--green);color:#fff}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slot{background:var(--slate);border:1px dashed var(--line);border-radius:8px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:4px}
+.slot.f{border-style:solid;border-color:var(--line)}
+.slot b{font-family:var(--display);font-weight:800;font-size:30px;line-height:1}
+.slot small{color:var(--dim);font-size:12px}
+.slot .src{position:absolute;left:7px;top:5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.slot .del{position:absolute;right:3px;top:3px;border:0;background:none;color:var(--dim);font-size:18px;line-height:1;width:28px;height:28px;border-radius:6px}
+.slot .del:hover{background:var(--slate-3);color:var(--chalk)}
+.turn-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--dim)}
+.turn-foot b{color:var(--chalk);font-family:var(--display);font-size:22px;font-weight:800}
+.co{color:var(--sisal);font-weight:600}
+
+.actions{display:grid;grid-template-columns:2fr 1.4fr 1fr;gap:8px}
+.btn{border:1px solid var(--line);background:var(--slate-3);border-radius:var(--r);padding:13px 12px;font-weight:600;font-size:16px}
+.btn:hover{border-color:var(--dim)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:var(--chalk);color:var(--slate);border-color:var(--chalk)}
+.btn.go{background:var(--green);border-color:var(--green);color:#fff}
+.status{font-size:14px;color:var(--dim);min-height:1.4em}
+.status.warn{color:var(--sisal)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:700px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--slate-2);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.panel h3{margin:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.panel h2{margin:0;font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:.02em}
+.hint{margin:0;font-size:13px;color:var(--dim)}
+#dartboard{width:100%;max-width:420px;align-self:center;aspect-ratio:1;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#dartboard .bk{fill:var(--bd-dark)} #dartboard .ss{fill:var(--sisal)} #dartboard .rd{fill:var(--red)} #dartboard .gr{fill:var(--green)}
+#dartboard .rim{fill:#0a0c0b} #dartboard .num{fill:var(--chalk);font-family:var(--display);font-weight:800;font-size:24px}
+#dartboard .wire{fill:none;stroke:#9aa39d;stroke-width:.7;opacity:.6}
+#dartboard .mk{fill:var(--chalk);stroke:var(--slate);stroke-width:2.5}
+#dartboard .mkt{fill:var(--slate);font:800 11px var(--body)}
+
+.seg{display:flex;flex-wrap:wrap;gap:4px;background:var(--slate);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{flex:1;border:0;background:none;border-radius:7px;padding:9px 8px;font-weight:600;color:var(--dim);min-width:44px}
+.seg button.on{background:var(--slate-3);color:var(--chalk);box-shadow:inset 0 0 0 1px var(--dim)}
+.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.keys button{border:1px solid var(--line);background:var(--slate);border-radius:7px;padding:10px 0;font-weight:600;font-variant-numeric:tabular-nums}
+.keys button:hover{border-color:var(--dim)}
+.keys button:disabled{opacity:.3}
+.keys .wide{grid-column:span 2}
+#mult-seg button[data-m="2"].on{color:var(--green)}
+#mult-seg button[data-m="3"].on{color:var(--red)}
+
+canvas.shot{width:100%;height:auto;border-radius:8px;background:var(--slate);display:block}
+.calwrap{position:relative}
+#calcv{width:100%;height:auto;max-height:70vh;object-fit:contain;border-radius:8px;background:var(--slate);display:block;touch-action:none}
+.prompt{margin:0;font-weight:600;color:var(--sisal)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row .btn{flex:1 1 150px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.names{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.names input{width:100%;background:var(--slate);border:1px solid var(--line);color:var(--chalk);border-radius:8px;padding:11px 12px;font:inherit}
+.check{display:flex;gap:10px;align-items:center;font-weight:500}
+.check input{width:20px;height:20px;accent-color:var(--green)}
+input[type=range]{width:100%;accent-color:var(--sisal)}
+.tips{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--dim);max-width:70ch}
+.tips b{color:var(--chalk);font-weight:600}
+.banner{background:var(--green);color:#fff;border-radius:var(--r);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.banner .big{font-family:var(--display);font-weight:800;font-size:30px;line-height:1;text-transform:uppercase;letter-spacing:.02em}
+.banner .btn{background:#fff;color:var(--slate);border-color:#fff}
+#toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--chalk);color:var(--slate);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;max-width:calc(100% - 32px);text-align:center;z-index:5}
+@media (prefers-reduced-motion:no-preference){.pc,.slot{transition:border-color .2s,box-shadow .2s}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">OCHE<span>501</span></div>
+    <nav class="tabs" id="tabs">
+      <button data-view="game" class="on">Game</button>
+      <button data-view="camera">Camera</button>
+      <button data-view="setup">New game</button>
+    </nav>
+  </header>
+
+  <!-- GAME -->
+  <section id="v-game" class="app" style="padding:0">
+    <div id="banner" class="banner" hidden></div>
+    <div id="scores" class="scores"></div>
+    <div class="turn">
+      <div class="turn-head"><span class="who" id="turn-who"></span><span class="tag" id="turn-tag"></span></div>
+      <div class="slots" id="slots"></div>
+      <div class="turn-foot"><span>Turn <b id="turn-total">0</b></span><span class="co" id="checkout"></span></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="btn-snap">Snap dart</button>
+      <button class="btn" id="btn-next">End turn</button>
+      <button class="btn" id="btn-undo">Undo</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Board · tap to add a dart</h3>
+        <svg id="dartboard" viewBox="-230 -230 460 460" role="img" aria-label="Dartboard"></svg>
+      </div>
+      <div class="panel">
+        <h3>Keypad</h3>
+        <div class="seg" id="mult-seg"><button data-m="1" class="on">Single</button><button data-m="2">Double</button><button data-m="3">Treble</button></div>
+        <div class="keys" id="keys"></div>
+        <h3 style="margin-top:6px">Camera view</h3>
+        <canvas class="shot" id="shot" width="960" height="720" hidden></canvas>
+        <p class="hint" id="shot-cap">No photo yet. Set up the camera in the Camera tab.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CAMERA -->
+  <section id="v-camera" class="app" style="padding:0" hidden>
+    <div class="panel">
+      <h2>Camera setup</h2>
+      <div class="seg" id="mode-seg"><button data-mode="photo">Photo per dart</button><button data-mode="live">Live camera</button></div>
+      <p class="hint" id="mode-note"></p>
+      <div class="row">
+        <button class="btn" id="btn-live" hidden>Start camera</button>
+        <button class="btn primary" id="btn-empty">Snap empty board</button>
+        <button class="btn" id="btn-calreset">Reset points</button>
+      </div>
+      <p class="prompt" id="cal-prompt"></p>
+      <div class="calwrap"><canvas id="calcv" width="960" height="720"></canvas></div>
+      <video id="vid" playsinline muted autoplay hidden></video>
+      <div class="field">
+        <span>Detection sensitivity</span>
+        <input type="range" id="sens" min="30" max="140" step="5">
+        <p class="hint">Move right if darts are missed, left if shadows or glare get picked up.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Getting good reads</h3>
+      <ol class="tips">
+        <li><b>Mount the phone</b> on a tripod or shelf 50–80 cm from the board, off to one side and a little below, so each dart shows as a clear line rather than end-on.</li>
+        <li><b>Keep it still.</b> Calibration is tied to the exact framing. If the phone moves, snap a new empty board and re-check the four points.</li>
+        <li><b>Light the board evenly.</b> Two lamps from the sides cut the dart shadows that confuse detection.</li>
+        <li><b>Calibrate on the double ring.</b> Tap the outer edge of the double ring in the middle of 20, 6, 3 and 11. Drag any point until the chalk lines sit on the wires.</li>
+        <li><b>Check every dart.</b> Detection is a best guess. Tap × on a wrong dart and re-enter it with the keypad or the board.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section id="v-setup" class="app" style="padding:0" hidden>
+    <div class="panel">
+      <h2>New game</h2>
+      <div class="field"><span>Players</span><div class="seg" id="np-seg"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></div></div>
+      <div class="names" id="names"></div>
+      <div class="field"><span>Starting score</span><div class="seg" id="start-seg"><button data-v="301">301</button><button data-v="501">501</button><button data-v="701">701</button></div></div>
+      <div class="field"><span>Finish</span><div class="seg" id="out-seg"><button data-v="1">Double out</button><button data-v="0">Straight out</button></div></div>
+      <div class="field"><span>Match</span><div class="seg" id="legs-seg"><button data-v="1">1 leg</button><button data-v="2">First to 2</button><button data-v="3">First to 3</button><button data-v="5">First to 5</button></div></div>
+      <label class="check"><input type="checkbox" id="call"> Call scores out loud</label>
+      <button class="btn go" id="btn-start" style="font-size:18px;padding:15px">Start game</button>
+    </div>
+  </section>
+
+  <input type="file" id="file" accept="image/*" capture="environment" hidden>
+  <div id="toast" hidden></div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- Board geometry (mm, board centre = 0,0, y up) ---------- */
+const ORDER=[20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+const R={bullIn:6.35,bull:15.9,triIn:99,triOut:107,dblIn:162,dblOut:170,mask:235};
+const CAL_SRC=[[0,170],[170,0],[0,-170],[-170,0]];
+const CAL_NAMES=['the middle of 20 (top)','the middle of 6 (right)','the middle of 3 (bottom)','the middle of 11 (left)'];
+
+function scoreAt(x,y){
+  const r=Math.hypot(x,y);
+  if(r<=R.bullIn) return {seg:25,mult:2,pts:50};
+  if(r<=R.bull) return {seg:25,mult:1,pts:25};
+  if(r>R.dblOut) return {seg:0,mult:0,pts:0};
+  const a=Math.atan2(y,x)*180/Math.PI;
+  const cw=((90-a+9)%360+360)%360;
+  const seg=ORDER[Math.floor(cw/18)%20];
+  const mult=r>=R.dblIn?2:(r>=R.triIn&&r<=R.triOut?3:1);
+  return {seg,mult,pts:seg*mult};
+}
+const label=d=>d.mult===0?'Miss':d.seg===25?(d.mult===2?'Bull':'25'):(d.mult===3?'T':d.mult===2?'D':'')+d.seg;
+const missDart=()=>({seg:0,mult:0,pts:0,src:'key'});
+function keyDart(seg,m){
+  if(seg===0) return missDart();
+  if(seg===25) return {seg:25,mult:m,pts:25*m,bx:m===2?0:8,by:m===2?0:-8,src:'key'};
+  const i=ORDER.indexOf(seg), t=(90-18*i)*Math.PI/180, r=m===3?103:m===2?166:135;
+  return {seg,mult:m,pts:seg*m,bx:r*Math.cos(t),by:r*Math.sin(t),src:'key'};
+}
+
+/* ---------- Homography ---------- */
+function solve(A,b){
+  const n=b.length, M=A.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<n;c++){
+    let p=c; for(let r=c+1;r<n;r++) if(Math.abs(M[r][c])>Math.abs(M[p][c])) p=r;
+    [M[c],M[p]]=[M[p],M[c]];
+    if(Math.abs(M[c][c])<1e-12) return null;
+    for(let r=0;r<n;r++){ if(r===c) continue; const f=M[r][c]/M[c][c]; for(let k=c;k<=n;k++) M[r][k]-=f*M[c][k]; }
+  }
+  return M.map((r,i)=>r[n]/r[i]);
+}
+function homog(src,dst){
+  const A=[],b=[];
+  for(let i=0;i<4;i++){ const [x,y]=src[i],[u,v]=dst[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]); b.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]); b.push(v); }
+  const h=solve(A,b); return h?[...h,1]:null;
+}
+const hApply=(H,x,y)=>{const w=H[6]*x+H[7]*y+H[8];return [(H[0]*x+H[1]*y+H[2])/w,(H[3]*x+H[4]*y+H[5])/w]};
+function inv3(m){
+  const [a,b,c,d,e,f,g,h,i]=m, A=e*i-f*h, B=-(d*i-f*g), C=d*h-e*g, det=a*A+b*B+c*C;
+  if(Math.abs(det)<1e-12) return null;
+  return [A/det,-(b*i-c*h)/det,(b*f-c*e)/det,B/det,(a*i-c*g)/det,-(a*f-c*d)/det,C/det,-(a*h-b*g)/det,(a*e-b*d)/det];
+}
+
+/* ---------- Checkout suggestions ---------- */
+const SETUP=[], FIN_D=[], FIN_ANY=[];
+for(let s=20;s>=1;s--) SETUP.push({l:'T'+s,p:3*s,k:20-s});
+for(let s=20;s>=1;s--) SETUP.push({l:String(s),p:s,k:22+(20-s)});
+SETUP.push({l:'Bull',p:50,k:21},{l:'25',p:25,k:45});
+for(let s=20;s>=1;s--) SETUP.push({l:'D'+s,p:2*s,k:50+(20-s)});
+SETUP.sort((a,b)=>a.k-b.k);
+[20,16,18,8,12,10,14,6,4,2,19,17,15,13,11,9,7,5,3,1].forEach((s,i)=>FIN_D.push({l:'D'+s,p:2*s,k:i}));
+FIN_D.push({l:'Bull',p:50,k:5});
+SETUP.forEach(t=>FIN_ANY.push({...t}));
+const coCache=new Map();
+function checkout(score,left,dbl){
+  const key=score+'|'+left+'|'+dbl; if(coCache.has(key)) return coCache.get(key);
+  let best=null;
+  const fins=dbl?FIN_D:FIN_ANY, fmap=new Map(); fins.forEach(f=>{ if(!fmap.has(f.p)||fmap.get(f.p).k>f.k) fmap.set(f.p,f); });
+  if(score>=2||(!dbl&&score>=1)){
+    for(let k=1;k<=left&&!best;k++){
+      if(k===1){ const f=fmap.get(score); if(f) best={c:f.k,ls:[f.l]}; }
+      else if(k===2){ for(const a of SETUP){ const f=fmap.get(score-a.p); if(f){ const c=a.k*2+f.k; if(!best||c<best.c) best={c,ls:[a.l,f.l]}; } } }
+      else { for(let i=0;i<SETUP.length;i++) for(let j=i;j<SETUP.length;j++){ const a=SETUP[i],b=SETUP[j]; const f=fmap.get(score-a.p-b.p); if(f){ const c=a.k*2+b.k*2+f.k; if(!best||c<best.c) best={c,ls:[a.l,b.l,f.l]}; } } }
+    }
+  }
+  const out=best?best.ls:null; coCache.set(key,out); return out;
+}
+
+/* ---------- Game state ---------- */
+function newGame(names,st){ return {settings:{...st},players:names.map(n=>({name:n})),legs:[{starter:0,turns:[{p:0,darts:[]}]}]}; }
+let S=newGame(['Player 1','Player 2'],{start:501,doubleOut:true,legsTo:1,call:true});
+
+function evalTurn(start,darts){
+  let s=start;
+  for(const d of darts){
+    s-=d.pts;
+    if(s<0||(S.settings.doubleOut&&s===1)||(s===0&&S.settings.doubleOut&&d.mult!==2)) return {end:start,bust:true,win:false,scored:0,complete:true};
+    if(s===0) return {end:0,bust:false,win:true,scored:start,complete:true};
+  }
+  return {end:s,bust:false,win:false,scored:start-s,complete:darts.length>=3};
+}
+function derive(){
+  const st=S.settings, stats=S.players.map(()=>({pts:0,darts:0,legs:0,best:0}));
+  let scores=null, legWinner=null;
+  S.legs.forEach((lg,li)=>{
+    const sc=S.players.map(()=>st.start); let w=null;
+    lg.turns.forEach(t=>{ const e=evalTurn(sc[t.p],t.darts); t._s=sc[t.p]; t._e=e; sc[t.p]=e.end;
+      stats[t.p].darts+=t.darts.length; stats[t.p].pts+=e.scored; if(e.complete&&e.scored>stats[t.p].best) stats[t.p].best=e.scored; if(e.win) w=t.p; });
+    if(w!==null) stats[w].legs++;
+    if(li===S.legs.length-1){ scores=sc; legWinner=w; }
+  });
+  const mw=stats.findIndex(s=>s.legs>=st.legsTo);
+  const leg=S.legs[S.legs.length-1], turn=leg.turns[leg.turns.length-1];
+  return {scores,stats,legWinner,matchWinner:mw<0?null:mw,leg,turn,e:turn._e};
+}
+const canAdd=D=>D.legWinner===null&&!D.e.complete;
+const dartsLeft=()=>{const D=derive();return canAdd(D)?3-D.turn.darts.length:0};
+const curTurn=()=>derive().turn;
+
+function addDarts(list){
+  let D=derive(), added=0;
+  for(const d of list){ if(!canAdd(D)) break; D.turn.darts.push(d); added++; D=derive(); }
+  if(added){ if(D.e.complete) announce(D); save(); render(); }
+  return added;
+}
+function announce(D){
+  const e=D.e;
+  if(e.win) say(D.matchWinner!==null?'Game shot, and the match':'Game shot, and the leg');
+  else if(e.bust) say('Bust');
+  else say(e.scored===0?'No score':String(e.scored));
+}
+function nextTurn(){
+  const D=derive(), n=S.players.length;
+  if(D.legWinner!==null){
+    if(D.matchWinner!==null) return;
+    const st=(D.leg.starter+1)%n; S.legs.push({starter:st,turns:[{p:st,darts:[]}]});
+  } else {
+    const was=D.e.complete;
+    while(D.turn.darts.length<3&&!evalTurn(D.turn._s,D.turn.darts).complete) D.turn.darts.push(missDart());
+    if(!was) announce(derive());
+    D.leg.turns.push({p:(D.turn.p+1)%n,darts:[]});
+  }
+  if(live.on) live.awaitClear=true;
+  save(); render();
+}
+function undo(){
+  const leg=S.legs[S.legs.length-1], t=leg.turns[leg.turns.length-1];
+  if(t.darts.length) t.darts.pop();
+  else if(leg.turns.length>1) leg.turns.pop();
+  else if(S.legs.length>1) S.legs.pop();
+  save(); render();
+}
+
+/* ---------- Speech + wake lock ---------- */
+function say(t){ if(!S.settings.call) return; try{ speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(t)); }catch(e){} }
+let wake=null;
+document.addEventListener('pointerdown',async()=>{ if(wake) return; try{ wake=await navigator.wakeLock.request('screen'); wake.addEventListener('release',()=>wake=null); }catch(e){} },{passive:true});
+
+/* ---------- Camera / vision ---------- */
+let mode='photo', sens=60, calVer=0;
+const cal={photo:null,live:null};          // {pts:[[u,v]..], w, h}
+const empty={photo:null,live:null};        // analysed frames of the empty board
+let turnRef=null;                          // {turn, fr}: last frame inside the current turn
+let lastShot=null;                         // {fr, res}
+const MAXW=960;
+
+function toFrameCanvas(src,sw,sh){
+  const s=Math.min(1,MAXW/sw), c=document.createElement('canvas');
+  c.width=Math.round(sw*s); c.height=Math.round(sh*s);
+  c.getContext('2d',{willReadFrequently:true}).drawImage(src,0,0,c.width,c.height); return c;
+}
+function analyse(c){
+  const W=c.width,H=c.height,w=W>>1,h=H>>1, d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
+  const r=new Float32Array(w*h),g=new Float32Array(w*h),b=new Float32Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i0=((2*y)*W+2*x)*4, i1=i0+4, i2=i0+W*4, i3=i2+4, k=y*w+x;
+    r[k]=(d[i0]+d[i1]+d[i2]+d[i3])/4; g[k]=(d[i0+1]+d[i1+1]+d[i2+1]+d[i3+1])/4; b[k]=(d[i0+2]+d[i1+2]+d[i2+2]+d[i3+2])/4;
+  }
+  return {canvas:c,W,H,w,h,r,g,b};
+}
+const Hcache={};
+function getH(W,Hh){
+  const c=cal[mode]; if(!c||c.pts.length<4) return null;
+  const key=mode+W+'x'+Hh+'|'+calVer; if(Hcache.key===key) return Hcache.v;
+  const sx=W/c.w, sy=Hh/c.h, H=homog(CAL_SRC,c.pts.map(([u,v])=>[u*sx,v*sy])), Hi=H&&inv3(H);
+  Hcache.key=key; Hcache.v=H&&Hi?{H,Hi}:null; return Hcache.v;
+}
+const maskCache={};
+function getMask(fr){
+  const hh=getH(fr.W,fr.H); if(!hh) return null;
+  const key=mode+fr.W+'x'+fr.H+'|'+calVer; if(maskCache.key===key) return maskCache.v;
+  const m=new Uint8Array(fr.w*fr.h); let n=0;
+  for(let y=0;y<fr.h;y++) for(let x=0;x<fr.w;x++){ const [bx,by]=hApply(hh.Hi,2*x+1,2*y+1); if(Math.hypot(bx,by)<=R.mask){ m[y*fr.w+x]=1; n++; } }
+  maskCache.key=key; maskCache.v={m,n}; return maskCache.v;
+}
+function offsets(a,b,m,step){
+  let sr=0,sg=0,sb=0,n=0;
+  for(let i=0;i<m.length;i+=step) if(m[i]){ sr+=b.r[i]-a.r[i]; sg+=b.g[i]-a.g[i]; sb+=b.b[i]-a.b[i]; n++; }
+  return n?[sr/n,sg/n,sb/n]:[0,0,0];
+}
+function changeFrac(a,b){
+  if(!a||!b||a.w!==b.w||a.h!==b.h) return 1;
+  const mk=getMask(b); if(!mk) return 0;
+  const m=mk.m,[or,og,ob]=offsets(a,b,m,7); let n=0,c=0;
+  for(let i=0;i<m.length;i+=2) if(m[i]){ n++; if(Math.abs(b.r[i]-or-a.r[i])+Math.abs(b.g[i]-og-a.g[i])+Math.abs(b.b[i]-ob-a.b[i])>sens) c++; }
+  return n?c/n:0;
+}
+// Min colour difference between cur(i) and ref's 3x3 neighbourhood: tolerant of 1px camera shake.
+function minDiff(ref,cur,i,w,o){
+  const cr=cur.r[i]-o[0],cg=cur.g[i]-o[1],cb=cur.b[i]-o[2]; let best=1e9;
+  for(let dy=-w;dy<=w;dy+=w) for(let dx=-1;dx<=1;dx++){ const j=i+dy+dx; const d=Math.abs(cr-ref.r[j])+Math.abs(cg-ref.g[j])+Math.abs(cb-ref.b[j]); if(d<best) best=d; }
+  return best;
+}
+function estimateTip(px,w){
+  const n=px.length; let mx=0,my=0;
+  for(const i of px){ mx+=i%w; my+=(i/w)|0; } mx/=n; my/=n;
+  let cxx=0,cyy=0,cxy=0;
+  for(const i of px){ const dx=i%w-mx, dy=((i/w)|0)-my; cxx+=dx*dx; cyy+=dy*dy; cxy+=dx*dy; }
+  cxx/=n; cyy/=n; cxy/=n;
+  const tr=cxx+cyy, det=cxx*cyy-cxy*cxy, disc=Math.sqrt(Math.max(0,tr*tr/4-det)), l1=tr/2+disc, l2=Math.max(tr/2-disc,1e-6);
+  let vx,vy; if(Math.abs(cxy)>1e-9){ vx=l1-cyy; vy=cxy; } else if(cxx>=cyy){ vx=1; vy=0; } else { vx=0; vy=1; }
+  const vl=Math.hypot(vx,vy); vx/=vl; vy/=vl;
+  const elong=Math.sqrt(l1/l2);
+  if(elong<1.6) return {x:mx,y:my,conf:'low'};
+  let tmin=1e9,tmax=-1e9; const ts=new Float32Array(n);
+  px.forEach((i,k)=>{ const t=(i%w-mx)*vx+(((i/w)|0)-my)*vy; ts[k]=t; if(t<tmin) tmin=t; if(t>tmax) tmax=t; });
+  const L=tmax-tmin; let ca=0,cb=0;
+  for(const t of ts){ if(t<tmin+0.2*L) ca++; if(t>tmax-0.2*L) cb++; }
+  const lowEnd=ca<=cb, edge=lowEnd?tmin:tmax, band=Math.max(1.5,0.05*L);
+  let sx=0,sy=0,c=0;
+  px.forEach((i,k)=>{ if(Math.abs(ts[k]-edge)<=band){ sx+=i%w; sy+=(i/w)|0; c++; } });
+  const ratio=Math.min(ca,cb)/Math.max(ca,cb,1);
+  return {x:sx/c,y:sy/c,conf:ratio<0.6?'high':'med'};
+}
+function detect(ref,cur,maxDarts,emptyFr){
+  if(!ref||ref.w!==cur.w||ref.h!==cur.h) return {error:'size'};
+  const mk=getMask(cur), hh=getH(cur.W,cur.H); if(!mk||!hh) return {error:'calib'};
+  const {w,h}=cur, m=mk.m, o=offsets(ref,cur,m,3), bin=new Uint8Array(w*h); let changed=0;
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ const i=y*w+x; if(!m[i]) continue; if(minDiff(ref,cur,i,w,o)>sens){ bin[i]=1; changed++; } }
+  const frac=changed/mk.n;
+  if(frac>0.25) return {error:'busy',frac};
+  const dil=new Uint8Array(w*h);
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ const i=y*w+x; if(bin[i]){ dil[i-w-1]=dil[i-w]=dil[i-w+1]=dil[i-1]=dil[i]=dil[i+1]=dil[i+w-1]=dil[i+w]=dil[i+w+1]=1; } }
+  const lab=new Int32Array(w*h), comps=[]; let id=0;
+  for(let s=0;s<w*h;s++){
+    if(!dil[s]||lab[s]) continue; id++; const px=[], st=[s]; lab[s]=id;
+    while(st.length){ const i=st.pop(); px.push(i); const x=i%w;
+      for(const j of [i-w-1,i-w,i-w+1,i-1,i+1,i+w-1,i+w,i+w+1]){ if(j<0||j>=w*h) continue; const jx=j%w; if(Math.abs(jx-x)>1) continue; if(dil[j]&&!lab[j]){ lab[j]=id; st.push(j); } } }
+    comps.push(px);
+  }
+  const minA=Math.max(12,mk.n*0.0006);
+  let keep=comps.filter(p=>p.length>=minA).sort((a,b)=>b.length-a.length);
+  if(keep.length) keep=keep.filter(p=>p.length>=0.2*keep[0].length);
+  const eo=emptyFr&&emptyFr.w===w?offsets(emptyFr,cur,m,3):null;
+  const darts=[], used=[];
+  for(const px of keep){
+    if(darts.length>=maxDarts) break;
+    const tip=estimateTip(px,w), tx=Math.round(tip.x), ty=Math.round(tip.y);
+    if(eo&&emptyFr!==ref){ // reject blobs where the board now matches the empty board (a dart was pulled out)
+      let c=0; for(let dy=-3;dy<=3;dy++) for(let dx=-3;dx<=3;dx++){ const xx=tx+dx,yy=ty+dy; if(xx<1||yy<1||xx>=w-1||yy>=h-1) continue; if(minDiff(emptyFr,cur,yy*w+xx,w,eo)>sens) c++; }
+      if(c<3) continue;
+    }
+    const fx=2*tip.x+1, fy=2*tip.y+1, [bx,by]=hApply(hh.Hi,fx,fy), sc=scoreAt(bx,by);
+    darts.push({...sc,bx,by,fx,fy,conf:tip.conf,src:'cam'}); used.push(px);
+  }
+  return {darts,comps:used,frac};
+}
+const ERR={size:'This photo is a different size from the empty-board photo. Snap a new empty board in the Camera tab.',calib:'Calibrate the board first in the Camera tab.',busy:'Too much of the board changed. The phone may have moved, or someone was in the shot.'};
+
+function refFor(){ const t=curTurn(); return turnRef&&turnRef.turn===t?turnRef.fr:empty[mode]; }
+function processFrame(fr){
+  const left=dartsLeft(); if(!left) return 0;
+  const res=detect(refFor(),fr,left,empty[mode]); lastShot={fr,res};
+  if(res.error){ setStatus(ERR[res.error],true); drawShot(); return -1; }
+  turnRef={turn:curTurn(),fr};
+  const n=addDarts(res.darts);
+  setStatus(n?`Found ${n} dart${n>1?'s':''}: ${res.darts.slice(0,n).map(label).join(', ')}${res.darts.some(d=>d.conf==='low')?' (low confidence, please check)':''}`:'No new dart found. Tap the board or use the keypad to add it.',!n);
+  drawShot(); return n;
+}
+
+/* Photo mode */
+let pendingEmpty=false;
+function loadImg(file){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>{res(im);URL.revokeObjectURL(u)}; im.onerror=rej; im.src=u; }); }
+$('#file').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  try{
+    const im=await loadImg(f), fr=analyse(toFrameCanvas(im,im.naturalWidth,im.naturalHeight));
+    if(pendingEmpty||!empty.photo){ pendingEmpty=false; setEmpty(fr); toast('Empty board saved'); if(!cal.photo||cal.photo.pts.length<4) show('camera'); return; }
+    processFrame(fr);
+  }catch(err){ setStatus('Could not read that photo. Try again.',true); }
+});
+function setEmpty(fr){
+  const c=cal[mode];
+  if(c&&(Math.abs(c.w/c.h-fr.W/fr.H)>0.02)){ cal[mode]=null; calVer++; toast('Framing changed, please recalibrate'); }
+  empty[mode]=fr; turnRef=null; calVer++;
+  try{ localStorage.setItem('oche501.img.'+mode,fr.canvas.toDataURL('image/jpeg',0.85)); }catch(e){}
+  saveCal(); drawCal(); drawShot(); render();
+}
+
+/* Live mode */
+const live={on:false,stream:null,timer:0,prev:null,still:0,awaitClear:false,raf:0};
+async function startLive(){
+  try{
+    live.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false});
+    const v=$('#vid'); v.srcObject=live.stream; await v.play();
+    live.on=true; live.timer=setInterval(liveTick,350); previewLoop(); renderCamera(); render();
+  }catch(e){
+    setModeNote('The live camera isn\'t available here. Use Photo per dart, or open the standalone copy of this page from your own https link.',true);
+  }
+}
+function stopLive(){ live.on=false; clearInterval(live.timer); cancelAnimationFrame(live.raf); if(live.stream) live.stream.getTracks().forEach(t=>t.stop()); live.stream=null; }
+function grabLive(){ const v=$('#vid'); if(!v.videoWidth) return null; return analyse(toFrameCanvas(v,v.videoWidth,v.videoHeight)); }
+function liveTick(){
+  const fr=grabLive(); if(!fr) return;
+  const mv=live.prev?changeFrac(live.prev,fr):1; live.prev=fr;
+  const still=mv<0.0015; live.still=still?live.still+1:0;
+  const E=empty.live; if(!E||!getH(fr.W,fr.H)){ setStatus('Live: capture the empty board and calibrate in the Camera tab.',true); return; }
+  const D=derive();
+  if(live.awaitClear||!canAdd(D)){
+    const toEmpty=changeFrac(E,fr);
+    if(live.still>=3&&toEmpty<0.004){
+      live.awaitClear=false; empty.live=fr; turnRef=null;
+      if(D.legWinner===null&&D.e.complete){ nextTurn(); live.awaitClear=false; }
+      setStatus('Live: board clear, watching for darts.');
+    } else setStatus(D.legWinner!==null?'Live: leg over.':'Live: pull the darts out to start the next turn.');
+    return;
+  }
+  const ref=refFor(), ch=changeFrac(ref,fr);
+  if(ch>0.25){ setStatus('Live: something is in front of the board.',true); return; }
+  if(live.still>=2&&ch>0.0008){
+    const n=processFrame(fr);
+    if(n===0) turnRef={turn:curTurn(),fr}; // absorb lighting drift
+    live.still=0;
+  } else if(!ch||ch<=0.0008) setStatus('Live: watching for darts.');
+}
+function previewLoop(){
+  if(!live.on) return;
+  const v=$('#vid');
+  if(v.videoWidth&&!$('#v-game').hidden){ $('#shot').hidden=false; drawFrameTo($('#shot'),v,v.videoWidth,v.videoHeight); }
+  live.raf=requestAnimationFrame(previewLoop);
+}
+
+/* ---------- Drawing camera views ---------- */
+function drawWire(ctx,H,alpha){
+  ctx.save(); ctx.strokeStyle=`rgba(238,241,234,${alpha})`; ctx.lineWidth=Math.max(1,ctx.canvas.width/600);
+  for(const r of [R.dblOut,R.dblIn,R.triOut,R.triIn,R.bull,R.bullIn]){
+    ctx.beginPath(); for(let k=0;k<=96;k++){ const t=k/96*2*Math.PI, [u,v]=hApply(H,r*Math.cos(t),r*Math.sin(t)); k?ctx.lineTo(u,v):ctx.moveTo(u,v); } ctx.stroke(); }
+  for(let i=0;i<20;i++){ const t=(90-18*i+9)*Math.PI/180, [u1,v1]=hApply(H,R.bull*Math.cos(t),R.bull*Math.sin(t)), [u2,v2]=hApply(H,R.dblOut*Math.cos(t),R.dblOut*Math.sin(t)); ctx.beginPath(); ctx.moveTo(u1,v1); ctx.lineTo(u2,v2); ctx.stroke(); }
+  ctx.fillStyle=`rgba(238,241,234,${alpha+.2})`; ctx.font=`800 ${Math.round(ctx.canvas.width/40)}px 'Big Shoulders Display',sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ORDER.forEach((s,i)=>{ const t=(90-18*i)*Math.PI/180, [u,v]=hApply(H,190*Math.cos(t),190*Math.sin(t)); ctx.fillText(s,u,v); });
+  ctx.restore();
+}
+function drawFrameTo(cv,src,sw,sh){
+  const s=Math.min(1,MAXW/sw), W=Math.round(sw*s), Hh=Math.round(sh*s);
+  if(cv.width!==W||cv.height!==Hh){ cv.width=W; cv.height=Hh; }
+  const ctx=cv.getContext('2d'); ctx.drawImage(src,0,0,W,Hh);
+  const hh=getH(W,Hh); if(hh) drawWire(ctx,hh.H,.35);
+  return ctx;
+}
+function drawShot(){
+  if(live.on) return;
+  const cv=$('#shot'), cap=$('#shot-cap');
+  const fr=lastShot?lastShot.fr:empty[mode];
+  cv.hidden=!fr; if(!fr) return;
+  const ctx=drawFrameTo(cv,fr.canvas,fr.W,fr.H);
+  if(lastShot&&lastShot.res&&!lastShot.res.error){
+    ctx.fillStyle='rgba(226,73,61,.45)';
+    for(const px of lastShot.res.comps) for(const i of px) ctx.fillRect((i%fr.w)*2,((i/fr.w)|0)*2,2,2);
+    lastShot.res.darts.forEach(d=>{ ctx.lineWidth=3; ctx.strokeStyle='#fff'; ctx.beginPath(); ctx.arc(d.fx,d.fy,10,0,7); ctx.stroke();
+      ctx.font='800 26px "Big Shoulders Display",sans-serif'; ctx.fillStyle='#fff'; ctx.strokeStyle='#000'; ctx.lineWidth=4; ctx.strokeText(label(d),d.fx+14,d.fy-12); ctx.fillText(label(d),d.fx+14,d.fy-12); });
+    cap.textContent='Last photo. Red shows what changed; rings mark where each dart tip was read.';
+  } else cap.textContent=lastShot?'Last photo (no darts read).':'Empty board reference.';
+}
+
+/* Calibration canvas */
+let drag=-1, dragOff=[0,0], loupe=null;
+function drawCal(){
+  const cv=$('#calcv'), ctx=cv.getContext('2d'), fr=empty[mode];
+  if(!fr){ cv.width=960; cv.height=540; ctx.fillStyle='#19221e'; ctx.fillRect(0,0,960,540); ctx.fillStyle='#94a199'; ctx.font='600 26px Barlow,sans-serif'; ctx.textAlign='center';
+    ctx.fillText(mode==='live'&&!live.on?'Start the camera, then capture the empty board':'Snap a photo of the empty board to begin',480,270); updatePrompt(); return; }
+  if(cv.width!==fr.W||cv.height!==fr.H){ cv.width=fr.W; cv.height=fr.H; }
+  ctx.drawImage(fr.canvas,0,0);
+  const c=cal[mode], hh=getH(fr.W,fr.H);
+  if(hh) drawWire(ctx,hh.H,.7);
+  if(c){ const sx=fr.W/c.w, sy=fr.H/c.h, rr=Math.max(10,fr.W/70);
+    c.pts.forEach(([u,v],i)=>{ u*=sx; v*=sy; ctx.lineWidth=3; ctx.strokeStyle=i===drag?'#e7d9b6':'#e2493d'; ctx.beginPath(); ctx.arc(u,v,rr,0,7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(u-rr*1.6,v); ctx.lineTo(u+rr*1.6,v); ctx.moveTo(u,v-rr*1.6); ctx.lineTo(u,v+rr*1.6); ctx.lineWidth=1.5; ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.font=`800 ${Math.round(rr*1.8)}px "Big Shoulders Display",sans-serif`; ctx.fillText(['20','6','3','11'][i],u+rr*1.4,v-rr*1.2); }); }
+  if(loupe){ const [u,v]=loupe, z=3, sz=Math.round(fr.W/4), src=sz/z;
+    ctx.save(); ctx.fillStyle='#000'; ctx.fillRect(8,8,sz+4,sz+4);
+    ctx.drawImage(cv,u-src/2,v-src/2,src,src,10,10,sz,sz);
+    ctx.strokeStyle='#e7d9b6'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(10+sz/2,10); ctx.lineTo(10+sz/2,10+sz); ctx.moveTo(10,10+sz/2); ctx.lineTo(10+sz,10+sz/2); ctx.stroke(); ctx.restore(); }
+  updatePrompt();
+}
+function updatePrompt(){
+  const c=cal[mode], n=c?c.pts.length:0, p=$('#cal-prompt');
+  if(!empty[mode]) p.textContent=mode==='live'?'Step 1: start the camera and capture the empty board.':'Step 1: snap a photo of the empty board from where the phone will stay.';
+  else if(n<4) p.textContent=`Step 2: tap the outer edge of the double ring at ${CAL_NAMES[n]}. (${n}/4)`;
+  else p.textContent='Calibrated. Drag a point if the chalk lines are off the wires.';
+}
+function cvPt(e){ const cv=$('#calcv'), r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]; }
+$('#calcv').addEventListener('pointerdown',e=>{
+  const fr=empty[mode]; if(!fr) return; e.preventDefault();
+  const p=cvPt(e), cv=$('#calcv');
+  let c=cal[mode]; if(c&&(c.w!==fr.W||c.h!==fr.H)){ const sx=fr.W/c.w, sy=fr.H/c.h; c.pts=c.pts.map(([u,v])=>[u*sx,v*sy]); c.w=fr.W; c.h=fr.H; }
+  if(!c||c.pts.length<4){ c=cal[mode]=c||{pts:[],w:fr.W,h:fr.H}; c.pts.push(p); calVer++; saveCal(); drawCal(); render(); return; }
+  let bi=-1,bd=1e9; c.pts.forEach(([u,v],i)=>{ const d=Math.hypot(u-p[0],v-p[1]); if(d<bd){bd=d;bi=i;} });
+  const tol=48*cv.width/cv.getBoundingClientRect().width;
+  if(bd<tol){ drag=bi; dragOff=[c.pts[bi][0]-p[0],c.pts[bi][1]-p[1]]; cv.setPointerCapture(e.pointerId); loupe=c.pts[bi].slice(); drawCal(); }
+});
+$('#calcv').addEventListener('pointermove',e=>{
+  if(drag<0) return; const p=cvPt(e), c=cal[mode];
+  c.pts[drag]=[p[0]+dragOff[0],p[1]+dragOff[1]]; loupe=c.pts[drag].slice(); calVer++; drawCal();
+});
+const endDrag=()=>{ if(drag<0) return; drag=-1; loupe=null; saveCal(); drawCal(); drawShot(); };
+$('#calcv').addEventListener('pointerup',endDrag); $('#calcv').addEventListener('pointercancel',endDrag);
+
+/* ---------- Persistence ---------- */
+function save(){ try{ localStorage.setItem('oche501.game',JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v)); }catch(e){} }
+function saveCal(){ try{ localStorage.setItem('oche501.cal',JSON.stringify({cal,mode,sens})); }catch(e){} }
+function loadAll(){
+  try{ const g=JSON.parse(localStorage.getItem('oche501.game')||'null'); if(g&&g.players&&g.legs) S=g; }catch(e){}
+  try{ const c=JSON.parse(localStorage.getItem('oche501.cal')||'null'); if(c){ cal.photo=c.cal.photo; cal.live=c.cal.live; mode=c.mode==='live'?'live':'photo'; sens=c.sens||60; } }catch(e){}
+  for(const m of ['photo','live']){
+    let u=null; try{ u=localStorage.getItem('oche501.img.'+m); }catch(e){}
+    if(u){ const im=new Image(); im.onload=()=>{ empty[m]=analyse(toFrameCanvas(im,im.naturalWidth,im.naturalHeight)); calVer++; drawCal(); drawShot(); }; im.src=u; }
+  }
+}
+
+/* ---------- UI ---------- */
+let toastT=0;
+function toast(t){ const el=$('#toast'); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,2400); }
+function setStatus(t,warn){ const el=$('#status'); el.textContent=t||''; el.classList.toggle('warn',!!warn); }
+function setModeNote(t,warn){ const el=$('#mode-note'); el.textContent=t; el.style.color=warn?'var(--sisal)':''; }
+
+function show(v){
+  for(const id of ['game','camera','setup']) $('#v-'+id).hidden=id!==v;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+  if(v==='camera'){ renderCamera(); drawCal(); }
+  if(v==='setup') renderSetup();
+  if(v==='game'){ render(); drawShot(); }
+}
+$('#tabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) show(b.dataset.view); });
+
+function buildBoard(){
+  const P=(r,a)=>{const t=a*Math.PI/180;return (r*Math.cos(t)).toFixed(2)+' '+(-r*Math.sin(t)).toFixed(2)};
+  const arc=(r1,r2,a1,a2)=>`M${P(r2,a1)} A${r2} ${r2} 0 0 0 ${P(r2,a2)} L${P(r1,a2)} A${r1} ${r1} 0 0 1 ${P(r1,a1)} Z`;
+  let h=`<circle r="228" class="rim"/>`;
+  ORDER.forEach((s,i)=>{ const c=90-18*i, ev=i%2===0;
+    [[R.dblIn,R.dblOut,1],[R.triOut,R.dblIn,0],[R.triIn,R.triOut,1],[R.bull,R.triIn,0]].forEach(([a,b,ring])=>{
+      h+=`<path d="${arc(a,b,c-9,c+9)}" class="${ring?(ev?'rd':'gr'):(ev?'bk':'ss')}"/>`; });
+    const t=c*Math.PI/180; h+=`<text class="num" x="${(200*Math.cos(t)).toFixed(1)}" y="${(-200*Math.sin(t)+8).toFixed(1)}" text-anchor="middle">${s}</text>`;
+  });
+  h+=`<circle r="${R.bull}" class="gr"/><circle r="${R.bullIn}" class="rd"/><g id="marks"></g>`;
+  $('#dartboard').innerHTML=h;
+}
+$('#dartboard').addEventListener('click',e=>{
+  const svg=$('#dartboard'), pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+  const q=pt.matrixTransform(svg.getScreenCTM().inverse()), bx=q.x, by=-q.y;
+  if(Math.hypot(bx,by)>228) return;
+  if(!addDarts([{...scoreAt(bx,by),bx,by,src:'tap'}])) toast('This turn is finished. Tap Next or Undo.');
+});
+
+let mult=1;
+function buildKeys(){
+  let h=''; for(let s=1;s<=20;s++) h+=`<button data-s="${s}">${s}</button>`;
+  h+=`<button data-s="25" id="k25">25</button><button data-s="50">Bull</button><button data-s="0" class="wide">Miss</button><button data-s="-1" id="kclear" style="visibility:hidden"></button>`;
+  $('#keys').innerHTML=h;
+}
+$('#mult-seg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; mult=+b.dataset.m; renderMult(); });
+function renderMult(){ document.querySelectorAll('#mult-seg button').forEach(b=>b.classList.toggle('on',+b.dataset.m===mult)); $('#k25').disabled=mult===3; }
+$('#keys').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b||b.disabled) return; const s=+b.dataset.s; if(s<0) return;
+  const d=s===50?keyDart(25,2):s===25?keyDart(25,mult===2?2:1):keyDart(s,mult);
+  if(!addDarts([d])) toast('This turn is finished. Tap Next or Undo.');
+  mult=1; renderMult();
+});
+
+function render(){
+  const D=derive(), st=S.settings, n=S.players.length, cur=D.turn;
+  // scoreboard
+  $('#scores').innerHTML=S.players.map((p,i)=>{
+    const on=D.legWinner===null&&cur.p===i, s=D.stats[i];
+    const rem=on?D.e.end:D.scores[i], avg=s.darts?(s.pts/s.darts*3).toFixed(1):'–';
+    const pips=st.legsTo>1?`<div class="legpips">${Array.from({length:st.legsTo},(_,k)=>`<i class="${k<s.legs?'w':''}"></i>`).join('')}</div>`:'';
+    return `<div class="pc ${on?'on':''}">${pips}<div class="nm">${esc(p.name)}</div><div class="sc">${rem}</div><div class="meta"><span>Avg <b>${avg}</b></span><span>Darts <b>${s.darts}</b></span>${s.best?`<span>Best <b>${s.best}</b></span>`:''}</div></div>`;
+  }).join('');
+  // banner
+  const bn=$('#banner');
+  if(D.legWinner!==null){
+    const nm=esc(S.players[D.legWinner].name), match=D.matchWinner!==null;
+    bn.innerHTML=`<div><div class="big">${match?(n>1?nm+' wins the match':'Checked out!'):'Game shot · '+nm}</div><div>${match?'Start a new game when you\'re ready.':'Leg to '+nm+'.'}</div></div>`+
+      (match?`<button class="btn" data-act="new">New game</button>`:`<button class="btn" data-act="leg">Next leg</button>`);
+    bn.hidden=false;
+  } else bn.hidden=true;
+  // turn strip
+  $('#turn-who').textContent=S.players[cur.p].name;
+  const tag=$('#turn-tag'); tag.className='tag'+(D.e.bust?' bust':D.e.win?' win':'');
+  tag.textContent=D.e.bust?'Bust':D.e.win?'Game shot':D.e.complete?'Turn done':`${3-cur.darts.length} dart${cur.darts.length===2?'':'s'} left`;
+  $('#slots').innerHTML=[0,1,2].map(i=>{ const d=cur.darts[i];
+    return d?`<div class="slot f"><span class="src">${d.src==='cam'?'cam':d.src==='tap'?'tap':''}</span><b>${label(d)}</b><small>${d.pts}</small><button class="del" data-del="${i}" aria-label="Remove dart ${i+1}">×</button></div>`:`<div class="slot"><small>Dart ${i+1}</small></div>`; }).join('');
+  $('#turn-total').textContent=D.e.bust?0:cur.darts.reduce((a,d)=>a+d.pts,0);
+  const rem=D.e.end, left=3-cur.darts.length;
+  let co=''; if(canAdd(D)&&rem<=170){ const c=checkout(rem,left,st.doubleOut); co=c?'Out: '+c.join(' · '):(st.doubleOut&&rem<=170?'No out this turn':''); }
+  $('#checkout').textContent=co;
+  // buttons
+  const nx=$('#btn-next');
+  if(D.legWinner!==null){ nx.textContent=D.matchWinner!==null?'New game':'Next leg'; nx.className='btn go'; }
+  else if(D.e.complete){ nx.textContent=n>1?'Next player':'Next turn'; nx.className='btn go'; }
+  else { nx.textContent='End turn'; nx.className='btn'; }
+  const snap=$('#btn-snap');
+  if(mode==='live'){ snap.textContent=live.on?'Board is clear':'Start live camera'; snap.disabled=false; }
+  else { snap.textContent=empty.photo?'Snap dart':'Snap empty board'; snap.disabled=!!empty.photo&&!canAdd(D); }
+  $('#btn-undo').disabled=!cur.darts.length&&D.leg.turns.length<2&&S.legs.length<2;
+  // board markers
+  $('#marks').innerHTML=cur.darts.map((d,i)=>d.bx==null?'':`<g transform="translate(${d.bx.toFixed(1)} ${(-d.by).toFixed(1)})"><circle r="9" class="mk"/><text class="mkt" text-anchor="middle" y="4">${i+1}</text></g>`).join('');
+}
+$('#slots').addEventListener('click',e=>{ const b=e.target.closest('[data-del]'); if(!b) return; curTurn().darts.splice(+b.dataset.del,1); save(); render(); });
+$('#banner').addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='new') show('setup'); else nextTurn(); });
+$('#btn-next').addEventListener('click',()=>{ const D=derive(); if(D.matchWinner!==null) show('setup'); else nextTurn(); });
+$('#btn-undo').addEventListener('click',undo);
+$('#btn-snap').addEventListener('click',()=>{
+  if(mode==='live'){
+    if(!live.on){ startLive(); return; }
+    const fr=grabLive(); if(fr){ empty.live=fr; turnRef=null; live.awaitClear=false; toast('Board marked clear'); }
+    const D=derive(); if(D.legWinner===null&&D.e.complete) nextTurn(); return;
+  }
+  if(!empty.photo) pendingEmpty=true;
+  $('#file').click();
+});
+
+/* Camera tab */
+function renderCamera(){
+  document.querySelectorAll('#mode-seg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
+  $('#btn-live').hidden=mode!=='live'; $('#btn-live').textContent=live.on?'Stop camera':'Start camera';
+  $('#btn-empty').textContent=mode==='live'?'Capture empty board':'Snap empty board';
+  $('#btn-empty').disabled=mode==='live'&&!live.on;
+  if(mode==='photo') setModeNote('After each dart (or after all three), tap Snap dart. Your camera opens; take the photo without moving the phone.');
+  else setModeNote(live.on?'Camera running. Darts are read automatically once they stop wobbling.':'Darts are read automatically from the live feed. Needs camera permission in this browser.');
+  $('#sens').value=sens;
+}
+$('#mode-seg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; const m=b.dataset.mode; if(m===mode) return;
+  if(mode==='live') stopLive(); mode=m; turnRef=null; lastShot=null; saveCal(); renderCamera(); drawCal(); drawShot(); render(); });
+$('#btn-live').addEventListener('click',()=>{ if(live.on){ stopLive(); renderCamera(); render(); } else startLive(); });
+$('#btn-empty').addEventListener('click',()=>{
+  if(mode==='live'){ const fr=grabLive(); if(fr){ setEmpty(fr); toast('Empty board captured'); } return; }
+  pendingEmpty=true; $('#file').click();
+});
+$('#btn-calreset').addEventListener('click',()=>{ cal[mode]=null; calVer++; saveCal(); drawCal(); drawShot(); });
+$('#sens').addEventListener('input',e=>{ sens=+e.target.value; saveCal(); });
+
+/* Setup tab */
+let draft=null;
+function renderSetup(){
+  if(!draft) draft={n:S.players.length,names:S.players.map(p=>p.name),start:S.settings.start,doubleOut:S.settings.doubleOut,legsTo:S.settings.legsTo,call:S.settings.call};
+  const on=(sel,v)=>document.querySelectorAll(sel+' button').forEach(b=>b.classList.toggle('on',b.dataset.v===String(v)));
+  on('#np-seg',draft.n); on('#start-seg',draft.start); on('#out-seg',draft.doubleOut?1:0); on('#legs-seg',draft.legsTo);
+  $('#names').innerHTML=Array.from({length:draft.n},(_,i)=>`<input id="name-${i}" data-i="${i}" maxlength="18" aria-label="Player ${i+1} name" value="${esc(draft.names[i]||'Player '+(i+1))}">`).join('');
+  $('#call').checked=draft.call;
+}
+$('#names').addEventListener('input',e=>{ const i=e.target.dataset.i; if(i!=null) draft.names[+i]=e.target.value; });
+for(const [sel,k,f] of [['#np-seg','n',Number],['#start-seg','start',Number],['#out-seg','doubleOut',v=>v==='1'],['#legs-seg','legsTo',Number]])
+  $(sel).addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; draft[k]=f(b.dataset.v); renderSetup(); });
+$('#call').addEventListener('change',e=>{ draft.call=e.target.checked; });
+$('#btn-start').addEventListener('click',()=>{
+  const names=Array.from({length:draft.n},(_,i)=>(draft.names[i]||'').trim()||'Player '+(i+1));
+  S=newGame(names,{start:draft.start,doubleOut:draft.doubleOut,legsTo:draft.legsTo,call:draft.call});
+  draft=null; turnRef=null; lastShot=null; save(); show('game'); setStatus('');
+});
+
+/* ---------- Boot ---------- */
+buildBoard(); buildKeys(); renderMult(); loadAll(); render(); drawShot();
+window.__oche={scoreAt,checkout,homog,hApply,inv3,detect,analyse,estimateTip,cal,empty,getH,setMode:m=>{mode=m},addDarts,derive,nextTurn,undo,get S(){return S}};
+})();
+</script>
+
+</body></html>
